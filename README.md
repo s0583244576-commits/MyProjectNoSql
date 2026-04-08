@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # E-Commerce Polyglot Data Pipeline
 
 The web API is fully wired up and running. **Your job is to implement the data access layer** -- the `DBAccess` class in `src/ecommerce_pipeline/db_access.py`.
@@ -167,3 +168,6 @@ Tests use separate test databases and are fully isolated -- each test cleans up 
 - Use the `/docs` endpoint in your browser as a live test client
 - For Phase 2+, confirm Redis is running with `redis-cli ping`
 - For Phase 3, check Neo4j Browser at [http://localhost:7474](http://localhost:7474) to inspect the graph visually
+=======
+# MyProjectNoSql
+>>>>>>> 5560f630898ddc293bf9f214497635c117eabc86
