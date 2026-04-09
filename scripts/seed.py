@@ -47,7 +47,7 @@ def seed(engine, mongo_db, redis_client=None, neo4j_driver=None):
     from ecommerce_pipeline.postgres_models import Customer, Product
     customers = json.load(open(SEED_DIR / "customers.json"))
     products = json.load(open(SEED_DIR / "products.json"))
-
+# טעינת נתונים לכל DB
     with Session(engine) as session:
         # Customers → Postgres
         for c in customers:
