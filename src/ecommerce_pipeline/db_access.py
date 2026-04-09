@@ -58,7 +58,8 @@ class DBAccess:
         from ecommerce_pipeline.postgres_models import Order, OrderItem, Product, Customer
         from ecommerce_pipeline.models.responses import OrderItemResponse, OrderCustomerEmbed, OrderResponse
 
-        if self._redis:
+        # בדיקת מלאי לפני יצירת הזמנה - הבדיקה נעשית מול ה redis מהיר יותר- נמצא בקאש
+        if self._redis:  
             for item in items:
                 stock = self._redis.get(f"inventory:{item.product_id}")
                 if stock is not None and int(stock) < item.quantity:
@@ -107,11 +108,13 @@ class DBAccess:
                 ))
 
             session.commit()
+            # עדכון המונגו שנוצרה עוד הזמנה 
             for product, quantity in order_items_data:
                 self._mongo_db["product_catalog"].update_one(
                     {"id": product.id},
                     {"$inc": {"stock_quantity": -quantity}},
                 )
+                # עדכון המלאי ברדיס
                 if self._redis:
                     self._redis.decrby(f"inventory:{product.id}", quantity)
                     self._redis.delete(f"product:{product.id}")
@@ -121,6 +124,7 @@ class DBAccess:
             customer = session.get(Customer, customer_id)
 
         # Neo4j co-purchase edges (best-effort)
+        # עדכון ה NEO4J עדכון של קשר בין שני מוצרים שנקנו יחד
         if self._neo4j:
             product_ids = [p.id for p, _ in order_items_data]
             with self._neo4j.session() as neo4j_session:
@@ -160,6 +164,7 @@ class DBAccess:
             if cached:
                 return ProductResponse(**json.loads(cached))
 
+        # חיפוש במונגו ולא ברציונלי  - חפוש יותר קל 
         doc = self._mongo_db["product_catalog"].find_one({"id": product_id})
         if doc is None:
             return None
@@ -191,6 +196,7 @@ class DBAccess:
         if q is not None:
             query["name"] = {"$regex": q, "$options": "i"}
 
+        # חיפוש במונגו
         docs = self._mongo_db["product_catalog"].find(query)
         return [
             ProductResponse(
@@ -314,6 +320,8 @@ class DBAccess:
         Returns IDs as integers, most recently viewed first.
         Returns an empty list if no views have been recorded.
         """
+                # חיפוש ברדיס את המוצרים שלקוח צפה  - 10 אחרונים שנשמרו
+
         if not self._redis:
             return []
         return [int(pid) for pid in self._redis.lrange(f"recently_viewed:{customer_id}", 0, 9)]
@@ -334,7 +342,9 @@ class DBAccess:
         Sorted by score descending. Returns an empty list if no co-purchase relationships exist.
         """
         from ecommerce_pipeline.models.responses import RecommendationResponse
-
+# חיפוש הקשרים בין מוצרים הקשר מתעד כמה פעמים נקנו ביחד
+        # אם היינו מבצעים ב SQL היינו צריכים ליצור JION של טבלה לעצמה 
+        # לכל מוצר נוסף בקשר היינו צריכים לבצע עוד פעם JION
         if not self._neo4j:
             return []
         with self._neo4j.session() as neo4j_session:
